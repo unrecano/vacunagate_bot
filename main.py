@@ -70,11 +70,12 @@ def get_all_tweets(text):
         try:
             obj = parse_tweet(tweet)
             retweet_and_favorite_a_tweet(tweet)
-            logger.info(f"> {obj['N']} - {obj['user_scree_name']}, {obj['text']}")
+            logger.info(f"> {obj['id']} - {obj['user_scree_name']}, {obj['text']}")
             array.append(obj)
         except tweepy.TweepError as error:
             logger.error(str(error))
-            time.sleep(900)
+            if str(error.message[0]['code']) == '429':
+                time.sleep(900)
             continue
         except StopIteration:
             break
