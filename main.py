@@ -41,7 +41,7 @@ api = tweepy.API(auth, wait_on_rate_limit=True)
 
 def search_words_on_twitter(text):
     text_query = text + " -filter:retweets"
-    return tweepy.Cursor(api.search, q=text_query).items(10)
+    return tweepy.Cursor(api.search, q=text_query).items()
 
 def parse_tweet(tweet):
     return {
