@@ -74,8 +74,6 @@ def get_all_tweets(text):
             array.append(obj)
         except tweepy.TweepError as error:
             logger.error(str(error))
-            if str(error[0]['code']) == '429':
-                time.sleep(900)
             continue
         except StopIteration:
             break
