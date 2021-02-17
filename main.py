@@ -74,7 +74,7 @@ def get_all_tweets(text):
             array.append(obj)
         except tweepy.TweepError as error:
             logger.error(str(error))
-            if str(error.message[0]['code']) == '429':
+            if str(error[0]['code']) == '429':
                 time.sleep(900)
             continue
         except StopIteration:
@@ -168,7 +168,7 @@ def post_persons():
         try:
             api.update_status(text[:280])
             logger.info(f"> {text}")
-            time.sleep(30)
+            time.sleep(5)
         except tweepy.TweepError as error:
             logger.error(str(error))
 
