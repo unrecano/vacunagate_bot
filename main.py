@@ -73,7 +73,7 @@ def get_all_tweets(text):
             logger.info(f"> {obj['N']} - {obj['user_scree_name']}, {obj['text']}")
             array.append(obj)
         except tweepy.TweepError as error:
-            log.error(str(error))
+            logger.error(str(error))
             time.sleep(900)
             continue
         except StopIteration:
@@ -169,7 +169,7 @@ def post_persons():
             logger.info(f"> {text}")
             time.sleep(30)
         except tweepy.TweepError as error:
-            log.error(str(error))
+            logger.error(str(error))
 
 if __name__ == '__main__':
     keywords = ["vacunagate", "vacunasgate"]
