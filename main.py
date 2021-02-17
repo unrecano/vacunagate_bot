@@ -1,5 +1,6 @@
 import argparse
 import csv
+import json
 import logging
 import os
 import shutil
@@ -8,7 +9,7 @@ import time
 import tweepy
 from urllib import request
 from dotenv import load_dotenv
-from pymongo import MongoClient
+from pymongo import MongoClient, ASCENDING, UpdateOne
 
 # Read .env file.
 load_dotenv(verbose=True)
@@ -32,12 +33,16 @@ mongo_uri = f"mongodb+srv://{mongo_user}:{mongo_pass}@{mongo_host}/"
 # Connect to MongoDB
 client = MongoClient(mongo_uri)
 db = client.vacunagates
+db.tweets.create_index([('id', ASCENDING)], unique=True)
+db.retweets.create_index([('id', ASCENDING)], unique=True)
 
 # Auth Twitter.
 auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
 auth.set_access_token(access_token, access_token_secret)
 
 api = tweepy.API(auth, wait_on_rate_limit=True)
+
+profiles = [p.strip() for p in os.getenv('PROFILES').split(',')]
 
 def search_words_on_twitter(text):
     text_query = text + " -filter:retweets"
@@ -69,12 +74,16 @@ def get_all_tweets(text):
     for tweet in tweets:
         try:
             obj = parse_tweet(tweet)
-            retweet_and_favorite_a_tweet(tweet)
+            if tweet.user.screen_name in profiles:
+                retweet_and_favorite_a_tweet(tweet)
+                save_retweet(obj)
             logger.info(f"> {obj['id']} - {obj['user_scree_name']}, {obj['text']}")
             array.append(obj)
         except tweepy.TweepError as error:
             logger.error(str(error))
-            continue
+            if "'code': 419" in error.reason:
+                time.sleep(900)
+                continue
         except StopIteration:
             break
     return array
@@ -84,22 +93,22 @@ def save_tweets(text):
     collection = db.tweets
     tweets = get_all_tweets(text)
     logger.info("> Saving into database")
-    collection.insert_many(tweets)
+    l = [UpdateOne({'id': t['id']}, {'$set': t}, upsert=True) for t in tweets]
+    collection.bulk_write(l)
     logger.info("> Finished.")
 
-def save_tweet(tweet):
-    logger.info("> Starting save tweet.")
-    collection = db.tweets
+def save_retweet(tweet):
+    logger.info("> Starting save retweet.")
+    collection = db.retweets
     logger.info("> Saving into database")
-    collection.insert_one(tweet)
+    collection.update_one({'id': tweet['id']}, {'$set': tweet}, upsert=True)
     logger.info("> Finished.")
 
-
-def save_persons():
-    logger.info("> Starting save persons.")
+def get_all_persons():
+    logger.info("> Getting all persons.")
     collection = db.persons
     persons = []
-    url = "https://raw.githubusercontent.com/RoTorresT/VacunaGate_Peru/main/487vacunados.csv"
+    url = "https://raw.githubusercontent.com/unrecano/VacunaGate_Peru/main/487vacunados.csv"
     content = request.urlopen(url)
     with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
             shutil.copyfileobj(content, tmp_file)
@@ -115,9 +124,15 @@ def save_persons():
                 logger.info(f"> {obj['N']} - {obj['last_name']}, {obj['first_name']}")
                 persons.append(obj)
             line += 1
-    
+    return persons
+
+def save_persons():
+    logger.info("> Starting save persons.")
+    collection = db.persons
+    persons = get_all_persons()
     logger.info("> Saving into database")
-    collection.insert_many(persons)
+    l = [UpdateOne({'N': p['N']}, {'$set': p}, upsert=True) for p in persons]
+    collection.bulk_write(l)
     logger.info("> Finished.")
 
 # Create Listener.
@@ -127,26 +142,27 @@ class VacunagatesListener(tweepy.StreamListener):
         self.me = api.me()
     
     def on_status(self, tweet):
-        logger.info(f"> Processing tweet: {tweet.id}")
         if tweet.in_reply_to_status_id is not None or \
             tweet.user.id == self.me.id:
 
             return
         
-        if not tweet.favorited:
-            try:
-                tweet.favorite()
-            except Exception as e:
-                logger.error("> Error on favorite", exc_info=True)
+        if tweet.user.screen_name in profiles:
+            logger.info(f"> Processing tweet from {tweet.user.screen_name}")
+            if not tweet.favorited:
+                try:
+                    tweet.favorite()
+                except Exception as e:
+                    logger.error("> Error on favorite", exc_info=True)
+            
+            if not tweet.retweeted:
+                try:
+                    tweet.retweet()
+                except Exception as e:
+                    logger.error("> Error on retweet", exc_info=True)
         
-        if not tweet.retweeted:
-            try:
-                tweet.retweet()
-            except Exception as e:
-                logger.error("> Error on retweet", exc_info=True)
-        
-        parse = parse_tweet(tweet)
-        save_tweet(parse)
+            parse = parse_tweet(tweet)
+            save_retweet(parse)
     
     def on_error(self, status):
         logger.error(status)
@@ -170,18 +186,40 @@ def post_persons():
         except tweepy.TweepError as error:
             logger.error(str(error))
 
+def save_persons_test():
+    logger.info("> Starting save persons.")
+    persons = get_all_persons()
+    logger.info("> Saving into database")
+    with open('persons.json', mode='w') as f:
+        json.dump(persons, f, indent=2)
+    logger.info("> Finished.")
+
+def save_tweets_test(text):
+    logger.info("> Starting save tweets.")
+    tweets = get_all_tweets(text)
+    logger.info("> Saving into database")
+    with open('tweets.json', mode='w') as f:
+        json.dump(tweets, f, indent=2)
+    logger.info("> Finished.")
+
 if __name__ == '__main__':
-    keywords = ["vacunagate", "vacunasgate"]
+    keywords = ["#vacunagate", "#vacunasgate"]
     parser = argparse.ArgumentParser()
     parser.add_argument("--save", help="Save all data.", action="store_true")
     parser.add_argument("--stream", help="Listener tweets.", action="store_true")
     parser.add_argument("--tweet", help="Tweet names.", action="store_true")
+    parser.add_argument("--test_save", help="Test.", action="store_true")
+
     args = parser.parse_args()
+    if args.test_save:
+        save_persons_test()
+        for word in keywords:
+            save_tweets_test(word)
     if args.save:
         save_persons()
-        save_tweets(" ".join(keywords))
+        for word in keywords:
+            save_tweets(word)
     elif args.stream:
         run_listener(keywords)
     elif args.tweet:
-        post_persons()
-    
+        post_persons()    
