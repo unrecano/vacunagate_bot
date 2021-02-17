@@ -72,8 +72,8 @@ def get_all_tweets(text):
             retweet_and_favorite_a_tweet(tweet)
             logger.info(f"> {tweet['N']} - {tweet['user_scree_name']}, {tweet['text']}")
             array.append(obj)
-        except tweepy.TweepError as e:
-            print(e)
+        except tweepy.TweepError as error:
+            log.error(str(error))
             time.sleep(900)
             continue
         except StopIteration:
