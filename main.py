@@ -167,7 +167,7 @@ def post_persons():
         try:
             api.update_status(text[:280])
             logger.info(f"> {text}")
-            time.sleep(3)
+            time.sleep(30)
         except tweepy.TweepError as error:
             log.error(str(error))
 
