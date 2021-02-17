@@ -172,7 +172,7 @@ def post_persons():
             log.error(str(error))
 
 if __name__ == '__main__':
-    keywords = ["vacunagate"]
+    keywords = ["vacunagate", "vacunasgate"]
     parser = argparse.ArgumentParser()
     parser.add_argument("--save", help="Save all data.", action="store_true")
     parser.add_argument("--stream", help="Listener tweets.", action="store_true")
