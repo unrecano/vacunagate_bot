@@ -70,7 +70,7 @@ def get_all_tweets(text):
         try:
             obj = parse_tweet(tweet)
             retweet_and_favorite_a_tweet(tweet)
-            logger.info(f"> {tweet['N']} - {tweet['user_scree_name']}, {tweet['text']}")
+            logger.info(f"> {obj['N']} - {obj['user_scree_name']}, {obj['text']}")
             array.append(obj)
         except tweepy.TweepError as error:
             log.error(str(error))
