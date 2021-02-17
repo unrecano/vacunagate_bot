@@ -1,5 +1,6 @@
 import argparse
 import csv
+import datetime
 import json
 import logging
 import os
@@ -42,11 +43,13 @@ auth.set_access_token(access_token, access_token_secret)
 
 api = tweepy.API(auth, wait_on_rate_limit=True)
 
+# Get twitter's profiles.
 profiles = [p.strip() for p in os.getenv('PROFILES').split(',')]
 
 def search_words_on_twitter(text):
+    since = datetime.datetime.today().strftime("%Y-%m-%d")
     text_query = text + " -filter:retweets"
-    return tweepy.Cursor(api.search, q=text_query).items()
+    return tweepy.Cursor(api.search, q=text_query, since=since).items()
 
 def parse_tweet(tweet):
     return {
@@ -74,6 +77,7 @@ def get_all_tweets(text):
     for tweet in tweets:
         try:
             obj = parse_tweet(tweet)
+            print(tweet.created_at)
             if tweet.user.screen_name in profiles:
                 retweet_and_favorite_a_tweet(tweet)
                 save_retweet(obj)
@@ -203,7 +207,7 @@ def save_tweets_test(text):
     logger.info("> Finished.")
 
 if __name__ == '__main__':
-    keywords = ["#vacunagate", "#vacunasgate"]
+    keywords = [f"#{w.strip()}" for w in os.getenv('HASHTAGS').split(',')]
     parser = argparse.ArgumentParser()
     parser.add_argument("--save", help="Save all data.", action="store_true")
     parser.add_argument("--stream", help="Listener tweets.", action="store_true")
@@ -222,4 +226,4 @@ if __name__ == '__main__':
     elif args.stream:
         run_listener(keywords)
     elif args.tweet:
-        post_persons()    
+        post_persons()
