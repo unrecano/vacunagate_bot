@@ -16,7 +16,8 @@ from pymongo import MongoClient, ASCENDING, UpdateOne
 load_dotenv(verbose=True)
 
 # Configure log.
-logging.basicConfig(level=logging.INFO)
+custom_format = '%(asctime)s:%(levelname)s:%(name)s:%(message)s'
+logging.basicConfig(level=logging.INFO, format=custom_format)
 logger = logging.getLogger()
 
 # Twitter keys.
@@ -77,7 +78,6 @@ def get_all_tweets(text):
     for tweet in tweets:
         try:
             obj = parse_tweet(tweet)
-            print(tweet.created_at)
             if tweet.user.screen_name in profiles:
                 retweet_and_favorite_a_tweet(tweet)
                 save_retweet(obj)
@@ -175,7 +175,12 @@ def run_listener(keywords):
     logger.info("> Running Listener.")
     listener = VacunagatesListener(api)
     stream = tweepy.Stream(api.auth, listener)
-    stream.filter(track=keywords)
+    while True:
+        try:
+            stream.filter(track=keywords)
+        except (ProtocolError, AttributeError) as error:
+            logger.error(str(error))
+            continue
     logger.info("> Watch for tweets.")
 
 def post_persons():
