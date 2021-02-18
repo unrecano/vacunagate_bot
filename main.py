@@ -157,14 +157,14 @@ class VacunagatesListener(tweepy.StreamListener):
             if not tweet.favorited:
                 try:
                     tweet.favorite()
-                except Exception as e:
-                    logger.error("> Error on favorite", exc_info=True)
+                except Exception as error:
+                    logger.error(str(error))
             
             if not tweet.retweeted:
                 try:
                     tweet.retweet()
-                except Exception as e:
-                    logger.error("> Error on retweet", exc_info=True)
+                except Exception as error:
+                    logger.error(str(error))
         
             parse = parse_tweet(tweet)
             save_retweet(parse)
