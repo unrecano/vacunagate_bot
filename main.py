@@ -9,6 +9,7 @@ import tempfile
 import time
 import tweepy
 from urllib import request
+from urllib3.exceptions import ProtocolError
 from dotenv import load_dotenv
 from pymongo import MongoClient, ASCENDING, UpdateOne
 
