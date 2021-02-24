@@ -49,9 +49,8 @@ api = tweepy.API(auth, wait_on_rate_limit=True)
 profiles = [p.strip() for p in os.getenv('PROFILES').split(',')]
 
 def search_words_on_twitter(text):
-    since = datetime.datetime.today().strftime("%Y-%m-%d")
     text_query = text + " -filter:retweets"
-    return tweepy.Cursor(api.search, q=text_query, since=since).items()
+    return tweepy.Cursor(api.search, q=text_query).items()
 
 def parse_tweet(tweet):
     return {
